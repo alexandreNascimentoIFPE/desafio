@@ -34,138 +34,136 @@
             </div>
         </div>
         <p id="displayId"></p>
-        <p id="resultado"></p>
         <a id="link"></a>
 
         <input type="text" id="connId" class="form-control" placeholder="enter a connection id" required>
-        <input type="text" id="meuI" class="form-control" placeholder="enter a connection id" required>
-        nome: <input type="text" id="meunome" class="form-control" placeholder="Digite seu" required>
+        <input type="text" id="meuId" class="form-control" placeholder="enter a connection id" required>
         <button id="criarSala" class="btn btn-lg btn-success btn-block" type="submit">Criar Sala</button>
-        <button id="entrarSala" class="btn btn-lg btn-success btn-block"
-            type="submit">Entrar na Sala</button>
+        <button id="entrarSala" class="btn btn-lg btn-success btn-block" type="submit">Entrar na Sala</button>
     </div>
 
 
 
     <script src="https://unpkg.com/peerjs@1.2.0/dist/peerjs.min.js"></script>
     <script>
-        var meuId;
-        var peer = new Peer();
+        var url_string = window.location.href;
+        var url = new URL(url_string);
+        var room = url.searchParams.get("room");
+        var meuid;
 
-        var url = window.location.href;
-        console.log(url)
-        var res = url.split('?');
-        console.log(res)
-        peer.on('connection', function (connection) {
-            conn = connection;
-            peer_id = connection.peer
+        //   get the local video and display it with permission
+//mozilla.org
+function getLVideo(callbacks) {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    var constraints = {
+        audio: true,
+        video: true
+    }
+    navigator.getUserMedia(constraints, callbacks.success, callbacks.error)
 
-            document.getElementById('connId').value = peer_id;
-        });
+}
 
-        peer.on('call', function (call) {
+// diplay our stream if we have permission of the media
+function recStream(stream, elemid) {
+    var video = document.getElementById(elemid);
 
-            // this prompt can act funny if the browser tab is not ACTIVE it can return false
-            var acceptCall = confirm("Do you want to answer this call?");
-            // if accpt, exchange across the browser
-            if (acceptCall) {
-                call.answer(window.localstream);
+    video.srcObject = stream;
 
-                call.on('stream', function (stream) {
+    window.peer_stream = stream;
+}
+// function takes in a obj for the promise of using the media or not
+getLVideo({
+    success: function (stream) {
+        window.localstream = stream;
+        recStream(stream, 'lVideo');
+    },
+    error: function (err) {
+        alert("cannot access your camera");
+        console.log(err);
+    }
+})
 
-                    window.peer_stream = stream;
+// global variables for assign local and remote
+var conn;
+var peer_id;
 
-                    recStream(stream, 'rVideo')
-                });
-                // display alert if call is denien
-                call.on('close', function () {
-                    alert('The call has been denind');
-                })
-            } else {
-                console.log("call denied")
-            }
-        });
+// create a peer connection with peer obj or create you own using peer server docs
+var peer = new Peer();
 
-        function getLVideo(callbacks) {
-            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-            var constraints = {
-                audio: true,
-                video: true
-            }
-            navigator.getUserMedia(constraints, callbacks.success, callbacks.error)
+// display the peer id on the DOM 
+peer.on('open', function () {
+    document.getElementById("displayId").innerHTML = peer.id
+    document.getElementById("meuId").value = peer.id
+    meuid = peer.id;
 
-        }
+})
 
-        // diplay our stream if we have permission of the media
-        function recStream(stream, elemid) {
-            var video = document.getElementById(elemid);
+// when a client connects to another connected client
+peer.on('connection', function (connection) {
+    conn = connection;
+    peer_id = connection.peer
 
-            video.srcObject = stream;
+    document.getElementById('connId').value = peer_id;
+});
+
+document.getElementById('criarSala').addEventListener('click', function () {
+    document.getElementById('link').innerHTML = url_string+'?room='+meuid;
+    document.getElementById('link').href = url_string+'?room='+meuid;
+})
+// 
+peer.on('error', function (err) {
+    alert("an error has happened:" + err);
+    console.log(err);
+})
+// onclick connection button 
+if(room){
+    document.getElementById('connId').value = room;
+    peer_id = document.getElementById("connId").value;
+    // if there is a peer id, use global var to connect with current peerid
+    if (peer_id) {
+        conn = peer.connect(peer_id)
+    } else {
+        console.log("enter an id");
+    }
+}
+// call when call button is clicked
+peer.on('call', function (call) {
+
+    // this prompt can act funny if the browser tab is not ACTIVE it can return false
+    var acceptCall = confirm("Do you want to answer this call?");
+    // if accpt, exchange across the browser
+    if (acceptCall) {
+        call.answer(window.localstream);
+
+        call.on('stream', function (stream) {
 
             window.peer_stream = stream;
-        }
-        // function takes in a obj for the promise of using the media or not
-        getLVideo({
-            success: function (stream) {
-                window.localstream = stream;
-                recStream(stream, 'lVideo');
-            },
-            error: function (err) {
-                alert("cannot access your camera");
-                console.log(err);
-            }
+
+            recStream(stream, 'rVideo')
+        });
+        // display alert if call is denien
+        call.on('close', function () {
+            alert('The call has been denind');
         })
+    } else {
+        console.log("call denied")
+    }
+});
 
+// fires to the call event to initiate a call 
+document.getElementById('entrarSala').addEventListener('click', function () {
+    console.log("calling a peer: " + peer_id);
+    console.log(peer);
 
-        if (res[1] === undefined) {
+    // using our peer id to call the other then to display each others media
+    var call = peer.call(peer_id, window.localstream);
 
-            peer.on('open', function () {
+    call.on('stream', function (stream) {
+        window.peer_stream = stream;
 
-                document.getElementById("displayId").innerHTML = peer.id
-                document.getElementById("meuI").value = peer.id
-
-                console.log(peer.id)
-                meuId = peer.id;
-            })
-
-            document.getElementById('criarSala').addEventListener('click', function () {
-                localStorage.setItem(document.getElementById('meunome').value, document.getElementById('meuI').value)
-                document.getElementById('link').href += url+'?'+ document.getElementById('meunome').value
-                document.getElementById('link').innerHTML += url+'?' + document.getElementById('meunome').value
-                console.log(localStorage)
-
-            })
-        }
-        if (res[1] !== undefined) {
-            document.getElementById('criarSala').style.visibility = "hidden";
-            document.getElementById('entrarSala').style.visibility = "none";
-            
-            //tenta localizar os & (pode haver mais de 1)
-            var parametros = res[1].split('&');
-
-            //qtd. de parâmetros que serão tratados pelo laço.
-            var qtdParametrosParaLer = 5;
-
-            //guarda o nome dos parâmetros e os valores e, vetores.
-            var parametroEncontrado = new Array();
-            var valorParametro = new Array();
-
-            for (var cont = 0; cont <= qtdParametrosParaLer; cont++) {
-                if (parametros[cont] !== undefined) {
-                    captura = parametros[cont].split('=');
-
-                    parametroEncontrado[cont] = captura[0];
-                    valorParametro[cont] = captura[1];
-                    document.getElementById('connId').value = localStorage.getItem(parametroEncontrado[cont])
-                    console.log(localStorage);
-                    /*document.getElementById('resultado').innerHTML += parametroEncontrado[cont];
-                    document.getElementById('link').href += 'http://localhost:3000?' + parametroEncontrado[cont];
-                    document.getElementById('link').innerHTML += 'http://localhost:3000?' + parametroEncontrado[cont];
-                    */
-                }
-
-            }
-        }
+        recStream(stream, 'rVideo');
+    })
+}); 
     </script>
 </body>
 
