@@ -130,8 +130,8 @@
 
             document.getElementById('criarSala').addEventListener('click', function () {
                 localStorage.setItem(document.getElementById('meunome').value, document.getElementById('meuI').value)
-                document.getElementById('link').href += 'http://localhost:3000?' + document.getElementById('meunome').value
-                document.getElementById('link').innerHTML += 'http://localhost:3000?' + document.getElementById('meunome').value
+                document.getElementById('link').href += url+'?'+ document.getElementById('meunome').value
+                document.getElementById('link').innerHTML += url+'?' + document.getElementById('meunome').value
                 console.log(localStorage)
 
             })
