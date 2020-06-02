@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js">
+<!--<![endif]-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+    <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-6 col-md-6 col-lg-6">
+                remote
+                <video id="rVideo" autoplay="autplay">
+            </div>
+            <div class="col-sm-6 col-md-6 col-lg-6">
+                local
+                <video id="lVideo" autoplay="autplay" muted>
+            </div>
+        </div>
+        <p id="displayId"></p>
+        <p id="resultado"></p>
+        <a id="link"></a>
+
+        <input type="text" id="connId" class="form-control" placeholder="enter a connection id" required>
+        <input type="text" id="meuI" class="form-control" placeholder="enter a connection id" required>
+        nome: <input type="text" id="meunome" class="form-control" placeholder="Digite seu" required>
+        <button id="criarSala" class="btn btn-lg btn-success btn-block" type="submit">Criar Sala</button>
+        <button id="entrarSala" class="btn btn-lg btn-success btn-block"
+            type="submit">Entrar na Sala</button>
+    </div>
+
+
+
+    <script src="https://unpkg.com/peerjs@1.2.0/dist/peerjs.min.js"></script>
+    <script>
+        var meuId;
+        var peer = new Peer();
+
+        var url = window.location.href;
+        console.log(url)
+        var res = url.split('?');
+        console.log(res)
+        peer.on('connection', function (connection) {
+            conn = connection;
+            peer_id = connection.peer
+
+            document.getElementById('connId').value = peer_id;
+        });
+
+        peer.on('call', function (call) {
+
+            // this prompt can act funny if the browser tab is not ACTIVE it can return false
+            var acceptCall = confirm("Do you want to answer this call?");
+            // if accpt, exchange across the browser
+            if (acceptCall) {
+                call.answer(window.localstream);
+
+                call.on('stream', function (stream) {
+
+                    window.peer_stream = stream;
+
+                    recStream(stream, 'rVideo')
+                });
+                // display alert if call is denien
+                call.on('close', function () {
+                    alert('The call has been denind');
+                })
+            } else {
+                console.log("call denied")
+            }
+        });
+
+        function getLVideo(callbacks) {
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            var constraints = {
+                audio: true,
+                video: true
+            }
+            navigator.getUserMedia(constraints, callbacks.success, callbacks.error)
+
+        }
+
+        // diplay our stream if we have permission of the media
+        function recStream(stream, elemid) {
+            var video = document.getElementById(elemid);
+
+            video.srcObject = stream;
+
+            window.peer_stream = stream;
+        }
+        // function takes in a obj for the promise of using the media or not
+        getLVideo({
+            success: function (stream) {
+                window.localstream = stream;
+                recStream(stream, 'lVideo');
+            },
+            error: function (err) {
+                alert("cannot access your camera");
+                console.log(err);
+            }
+        })
+
+
+        if (res[1] === undefined) {
+
+            peer.on('open', function () {
+
+                document.getElementById("displayId").innerHTML = peer.id
+                document.getElementById("meuI").value = peer.id
+
+                console.log(peer.id)
+                meuId = peer.id;
+            })
+
+            document.getElementById('criarSala').addEventListener('click', function () {
+                localStorage.setItem(document.getElementById('meunome').value, document.getElementById('meuI').value)
+                document.getElementById('link').href += 'http://localhost:3000?' + document.getElementById('meunome').value
+                document.getElementById('link').innerHTML += 'http://localhost:3000?' + document.getElementById('meunome').value
+                console.log(localStorage)
+
+            })
+        }
+        if (res[1] !== undefined) {
+            document.getElementById('criarSala').style.visibility = "hidden";
+            document.getElementById('entrarSala').style.visibility = "none";
+            
+            //tenta localizar os & (pode haver mais de 1)
+            var parametros = res[1].split('&');
+
+            //qtd. de parâmetros que serão tratados pelo laço.
+            var qtdParametrosParaLer = 5;
+
+            //guarda o nome dos parâmetros e os valores e, vetores.
+            var parametroEncontrado = new Array();
+            var valorParametro = new Array();
+
+            for (var cont = 0; cont <= qtdParametrosParaLer; cont++) {
+                if (parametros[cont] !== undefined) {
+                    captura = parametros[cont].split('=');
+
+                    parametroEncontrado[cont] = captura[0];
+                    valorParametro[cont] = captura[1];
+                    document.getElementById('connId').value = localStorage.getItem(parametroEncontrado[cont])
+                    console.log(localStorage);
+                    /*document.getElementById('resultado').innerHTML += parametroEncontrado[cont];
+                    document.getElementById('link').href += 'http://localhost:3000?' + parametroEncontrado[cont];
+                    document.getElementById('link').innerHTML += 'http://localhost:3000?' + parametroEncontrado[cont];
+                    */
+                }
+
+            }
+        }
+    </script>
+</body>
+
+</html>
